@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CK2076的专属播放器</title>
+    <style>
+        .player-container {
+            width: 300px;
+            margin: 50px auto;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .controls {
+            margin-top: 15px;
+        }
+        button {
+            background-color: #007BFF;
+            border: none;
+            color: white;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .playlist {
+            list-style: none;
+            padding: 0;
+        }
+        .playlist li {
+            cursor: pointer;
+            padding: 5px;
+            margin: 5px;
+            border-bottom: 1px solid #ccc;
+        }
+        .playlist li:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="player-container">
+    <h2>请选择你本地的音视频文件夹进行播放</h2>
+    <input type="file" id="fileInput" accept="audio/*,video/*" webkitdirectory multiple onchange="loadFiles(event)">
+    <audio id="audioPlayer" controls style="margin-top: 20px; display: none;">
+        您的浏览器不支持音频元素。
+    </audio>
+    <video id="videoPlayer" controls style="margin-top: 20px; display: none; max-width: 100%;">
+        您的浏览器不支持视频元素。
+    </video>
+    <ul id="playlist" class="playlist">
+        <!-- 播放列表将由JavaScript动态生成 -->
+    </ul>
+</div>
+
+<script>
+    const audioPlayer = document.getElementById('audioPlayer');
+    const videoPlayer = document.getElementById('videoPlayer');
+    const playlistElement = document.getElementById('playlist');
+    let files = [];
+    let currentFileIndex = 0;
+
+    function loadFiles(event) {
+        files = Array.from(event.target.files).filter(file => file.type.startsWith('audio/') || file.type.startsWith('video/'));
+        playlistElement.innerHTML = ''; // 清空播放列表
+
+        files.forEach((file, index) => {
+            const listItem = document.createElement('li');
+            listItem.textContent = file.name;
+            listItem.onclick = () => changeFile(index);
+            playlistElement.appendChild(listItem);
+        });
+
+        if (files.length > 0) {
+            changeFile(0); // 播放第一个文件
+        }
+    }
+
+    function changeFile(index) {
+        currentFileIndex = index;
+        const file = files[currentFileIndex];
+        const objectURL = URL.createObjectURL(file);
+
+        if (file.type.startsWith('audio/')) {
+            videoPlayer.style.display = 'none';
+            audioPlayer.style.display = 'block';
+            audioPlayer.src = objectURL;
+            audioPlayer.play();
+        } else if (file.type.startsWith('video/')) {
+            audioPlayer.style.display = 'none';
+            videoPlayer.style.display = 'block';
+            videoPlayer.src = objectURL;
+            videoPlayer.play();
+        }
+    }
+
+    audioPlayer.onended = videoPlayer.onended = function() {
+        currentFileIndex = (currentFileIndex + 1) % files.length;
+        changeFile(currentFileIndex);
+    };
+</script>
+
+</body>
+</html>
