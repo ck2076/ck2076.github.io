@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片播放器和编辑器</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #imageContainer {
+            border: 2px solid #333;
+            width: 90vw; /* 设置容器宽度为视口宽度的90% */
+            height: 80vh; /* 设置容器高度为视口高度的80% */
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #image {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.25s ease;
+            cursor: grab;
+        }
+
+        #controls {
+            margin-top: 10px;
+        }
+
+        #cropArea {
+            position: absolute;
+            border: 2px dashed #FF0000;
+            display: none;
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <div id="imageContainer">
+        <div id="cropArea"></div>
+    </div>
+    <div id="controls">
+        <button onclick="exportImage()">导出为PNG</button>
+        <button onclick="startCrop()">开始裁剪</button>
+        <button onclick="applyCrop()">应用裁剪</button>
+        <button onclick="resizeImage()">设置图片大小</button>
+        <button onclick="compressImage()">压缩图片</button>
+    </div>
+
+    <script>
+        let currentScale = 1;
+        const imgElement = document.getElementById('image');
+        const cropArea = document.getElementById('cropArea');
+        let startX, startY, isCropping = false;
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imgElement.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        imgElement.addEventListener('wheel', function(event) {
+            event.preventDefault(); // 阻止页面滚动
+            const delta = event.deltaY > 0 ? -0.1 : 0.1; // 根据滚轮方向缩放
+            currentScale = Math.min(Math.max(0.1, currentScale + delta), 5); // 限制缩放范围
+            imgElement.style.transform = `scale(${currentScale})`;
+        });
+
+        function exportImage() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = imgElement.naturalWidth;
+            canvas.height = imgElement.naturalHeight;
+            context.drawImage(imgElement, 0, 0);
+            const link = document.createElement('a');
+            link.download = 'exported-image.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        function startCrop() {
+            cropArea.style.display = 'block';
+            cropArea.style.width = '100px';
+            cropArea.style.height = '100px';
+            cropArea.style.top = '10px';
+            cropArea.style.left = '10px';
+            isCropping = true;
+        }
+
+        cropArea.addEventListener('mousedown', function(e) {
+            if (!isCropping) return;
+            startX = e.clientX - cropArea.offsetLeft;
+            startY = e.clientY - cropArea.offsetTop;
+            document.addEventListener('mousemove', moveCropArea);
+            document.addEventListener('mouseup', stopMovingCropArea);
+        });
+
+        function moveCropArea(e) {
+            cropArea.style.left = `${e.clientX - startX}px`;
+            cropArea.style.top = `${e.clientY - startY}px`;
+        }
+
+        function stopMovingCropArea() {
+            document.removeEventListener('mousemove', moveCropArea);
+            document.removeEventListener('mouseup', stopMovingCropArea);
+        }
+
+        function applyCrop() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const scaleX = imgElement.naturalWidth / imgElement.width;
+            const scaleY = imgElement.naturalHeight / imgElement.height;
+            const cropX = cropArea.offsetLeft * scaleX;
+            const cropY = cropArea.offsetTop * scaleY;
+            const cropWidth = cropArea.clientWidth * scaleX;
+            const cropHeight = cropArea.clientHeight * scaleY;
+            canvas.width = cropWidth;
+            canvas.height = cropHeight;
+            context.drawImage(imgElement, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+            imgElement.src = canvas.toDataURL();
+            cropArea.style.display = 'none';
+            isCropping = false;
+        }
+
+        function resizeImage() {
+            const newWidth = prompt("输入新的宽度 (px):", imgElement.width);
+            const newHeight = prompt("输入新的高度 (px):", imgElement.height);
+            if (newWidth && newHeight) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = newWidth;
+                canvas.height = newHeight;
+                context.drawImage(imgElement, 0, 0, newWidth, newHeight);
+                imgElement.src = canvas.toDataURL();
+            }
+        }
+
+        function compressImage() {
+            const quality = prompt("输入压缩质量 (0.1 到 1.0):", "0.8");
+            if (quality) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = imgElement.naturalWidth;
+                canvas.height = imgElement.naturalHeight;
+                context.drawImage(imgElement, 0, 0);
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', parseFloat(quality));
+                const link = document.createElement('a');
+                link.download = 'compressed-image.jpg';
+                link.href = compressedDataUrl;
+                link.click();
+            }
+        }
+    </script>
+</body>
+</html>
